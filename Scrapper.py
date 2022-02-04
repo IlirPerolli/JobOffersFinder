@@ -9,13 +9,12 @@ class Tokenize:
 
     def tokenize(self):
         tokenized_array = self.keyword.split(' ')
-        for word in tokenized_array:
-            if (len(word)>=3):
-                self.tokenized_array.append(word)
-        if (len(self.tokenized_array)<3):
-            return self.tokenized_array
-        else:
+        if (len(tokenized_array)==1 or len(tokenized_array)>3):
             return []
+
+        if (len(self.tokenized_array)<3):
+            return tokenized_array
+
 
 class Scrapper:
     priority_jobs = []
@@ -33,42 +32,40 @@ class Scrapper:
         self.outputData()
 
 
-    def getData(self, url, index):
+    def getData(self, url, keyword, index):
 
-        for keyword in self.tokenizedKeyword:
-            html = requests.get(url+keyword).text
-            soup = BeautifulSoup(html, 'html.parser')
-            for data in soup.find_all('div', class_=self.classes[index]):
-                for a in data.find_all('a'):
-                    if ('lokacioni' not in a.get('href')): #per disa faqe
-                        if ('http' in a.get('href')):
-                            job = a.get('href')
-                            # title = a.text
-                            if ((job not in self.jobs) and (job not in self.priority_jobs)):
-                                if keyword == self.tokenizedKeyword[0]:
-                                    self.priority_jobs.append(job)
-                                else:
-                                    self.jobs.append(job)
+        html = requests.get(url+keyword).text
+        soup = BeautifulSoup(html, 'html.parser')
+        for data in soup.find_all('div', class_=self.classes[index]):
+            for a in data.find_all('a'):
+                if ('lokacioni' not in a.get('href')): #per disa faqe
+                     if ('http' in a.get('href')):
+                        job = a.get('href')
+                        # title = a.text
+                        if ((job not in self.jobs) and (job not in self.priority_jobs)):
+                            if keyword == self.tokenizedKeyword[0]:
+                                self.priority_jobs.append(job)
+                            else:
+                                self.jobs.append(job)
 
     def startThreading(self):
         print ("Duke kerkuar...")
         threads = []
         for i in range(5):
-            t = threading.Thread(target=self.getData, args=(self.urls[i], i))
-            t.daemon = True
-            threads.append(t)
-        for i in range(5):
+            for j in range(len(self.tokenizedKeyword)):
+                keyword = self.tokenizedKeyword[j]
+                t = threading.Thread(target=self.getData, args=(self.urls[i], keyword, i))
+                t.daemon = True
+                threads.append(t)
+        for i in range(5 * len(self.tokenizedKeyword)):
             threads[i].start()
-        for i in range(5):
+        for i in range(5 * len(self.tokenizedKeyword)):
             threads[i].join()
 
     def outputData(self):
         file = open('Jobs.txt', 'w',  encoding='utf8')
         file.close()
-        print (self.priority_jobs)
-        print (self.jobs)
         jobs = self.priority_jobs + self.jobs
-        print (jobs)
         for job in jobs:
             file = open('Jobs.txt', 'a')
             file.write(job + '\n')
